@@ -1,5 +1,8 @@
 #' Standardised unexpected volume
 #' 
+#' Implementation as per:  
+#' Garfinkel, Jon A. and Sokobin, Jonathan, Volume, Opinion Divergence and Returns: A Study of Post-Earnings Announcement Drift (November 2003). AFA 2004 San Diego Meetings, Available at SSRN: https://ssrn.com/abstract=280913 or http://dx.doi.org/10.2139/ssrn.280913
+#' 
 #' @param df A data frame containing columns 'date_stamp', 'pos', 'neg'
 #'
 #' @return A tibble containing a date stamp and standardised unexpected volume
