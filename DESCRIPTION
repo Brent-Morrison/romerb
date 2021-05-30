@@ -1,0 +1,20 @@
+Package: romerb
+Title: A personal R package
+Version: 0.0.0.9000
+Authors@R: 
+    person(given = "Brent",
+           family = "Morrison",
+           role = c("aut", "cre"),
+           email = "brentjohnmorrison@hotmail.com",
+           comment = c(ORCID = "YOUR-ORCID-ID"))
+Description: A collection of functions falling into two categories. 
+  General helper functions, and functions
+  specific to the "Stock_master" database.
+License: MIT + file LICENSE
+Encoding: UTF-8
+LazyData: true
+Roxygen: list(markdown = TRUE)
+RoxygenNote: 7.1.1
+Imports: 
+    tibble,
+    stats
