@@ -7,10 +7,10 @@
 suv(df)
 }
 \arguments{
-\item{df}{A data frame containing columns 'date_stamp', 'pos', 'neg'}
+\item{df}{A data frame containing columns 'date_stamp', 'pos', 'neg'.}
 }
 \value{
-A tibble containing a date stamp and standardised unexpected volume
+A tibble containing a date stamp and standardised unexpected volume.
 }
 \description{
 Implementation as per:

@@ -1,0 +1,206 @@
+#' Time series histogram and shading
+#' 
+#' Make density plot of subsequent returns conditioned on multiple binary indicators derived from reference time series 
+#' 
+#' @param df1 A dataframe containing the following columns:
+#' - date
+#' - market index values (labelled "close")
+#' - monthly forward market returns (labelled "fwd_rtn_m")
+#' - an indicator time series to be plotted and categorised into bins representing specific level and change values
+#'
+#' @param df2 A dataframe containing the time series to shade the S&P500 plot
+#' 
+#' @param col1 A column name in df1 representing time series to derive the multiple binary indicators
+#' 
+#' @param col2 either, level - split time series into 3 levels, or both  - split time series into 3 levels and 6 month change
+#' 
+#' @export
+#' @return A tibble containing a date stamp and standardised unexpected volume.
+#' 
+ts_segmentation <- function(df1, df2, col1, col2) {
+  # use old tidyr::nest
+  nest <- tidyr::nest_legacy
+  
+  # Bind variables locally - https://nathaneastwood.github.io/2019/08/18/no-visible-binding-for-global-variable/
+  . <- fwd_rtn_m <- x1.lag6 <- x1.lag12 <- x1_lag00 <- x1.qntl	<- x1.delta <- x1_lag06	<- x1_lag12 <- 
+  Indicator <- rowname <- rowIndex	<- Value <- Value_fact <- data <-ks_fit <- Mean <- In <- 
+  Out <- mean_diff <- p_val <- start <- end <- NULL
+  
+  x1 <- rlang::enquo(col1)
+  x1a<- paste0(rlang::quo_name(x1), " : ")
+  x1b<- rlang::enquo(col2)
+  x2 <- df1 %>% 
+    # select data required, including indicator under analysis
+    dplyr::select(date, fwd_rtn_m, !!x1) %>% 
+    tidyr::drop_na() %>% 
+    dplyr::mutate(
+      x1.lag6  = dplyr::lag(!!x1, 6),
+      x1.lag12 = dplyr::lag(!!x1, 12), 
+      
+      # tercile level factor
+      x1.qntlx = dplyr::ntile(!!x1, 3),
+      x1.qntl  = dplyr::case_when(x1.qntlx == 1 ~ "_low", 
+                          x1.qntlx == 2 ~ "_mid", 
+                          x1.qntlx == 3 ~ "_high"),
+           
+           # change in level indicator
+           x1.rtn6  = !!x1 - x1.lag6,
+           x1.rtn12 = !!x1 - x1.lag12,
+           
+           # binary change in level factor
+           x1.delta = dplyr::case_when(rlang::quo_name(x1b) == "level" ~ "", 
+                                       rlang::quo_name(x1b) == "both"  ~ if_else(!!x1 > dplyr::lag(!!x1, n = 6), "incr", "decr"))) %>%
+    
+    # factor combining tercile level and binary change in level factors 
+    tidyr::unite(x1_lag00, c(x1.qntl, x1.delta),sep="_", remove = FALSE) %>%
+    
+    # lagged combined factor and filter out NA's
+    dplyr::mutate(
+      x1_lag06 = dplyr::lag(x1_lag00, 6),                           
+      x1_lag12 = dplyr::lag(x1_lag00, 12)) %>%                           
+    dplyr::filter(!is.na(x1.lag12))
+  
+  # current values of factor values for plot text
+  x2.1 <- dplyr::slice(x2, dplyr::n()) %>% dplyr::select(x1_lag00, x1_lag06, x1_lag12) %>% t() %>% 
+    data.frame() %>% tibble::rownames_to_column() %>% 
+    tidyr::unite(Indicator, c(rowname, .), sep = "", remove = TRUE) %>% 
+    dplyr::mutate(Indicator =  gsub("x1_", "", Indicator))
+  
+  #x2.2 <- quantile(!!x1, probs = 0.33)
+  # dummy variables for each (current & lagged) combined level / change factor
+  x3 <- stats::predict(caret::dummyVars(" ~ x1_lag00", data = x2), newdata = x2)
+  x4 <- stats::predict(caret::dummyVars(" ~ x1_lag06", data = x2), newdata = x2)
+  x5 <- stats::predict(caret::dummyVars(" ~ x1_lag12", data = x2), newdata = x2)
+  
+  # combine dummy variable sets (current and lagged) to single data frame 
+  x6 <- tibble::as_tibble(cbind(x3, x4, x5)) %>% dplyr::select(-tidyselect::contains("NA")) %>% 
+    tibble::rownames_to_column(var = 'rowIndex') %>% 
+    
+    # transform combined dummy variable data from wide to long format
+    tidyr::gather(key = 'Indicator', value = 'Value', -rowIndex) %>% 
+    
+    # convert dummy variable to factor
+    dplyr::mutate(Value_fact = ifelse(Value == 1, "In", "Out"))
+  
+  # assign rownames to columns in order to join return data to dummy variable data
+  x7 <- x2 %>% dplyr::select(date, fwd_rtn_m) %>% tibble::rownames_to_column(var = 'rowIndex')
+  
+  # data for histogram plot - join return data to dummy variable data 
+  x8 <- dplyr::full_join(x6, x7, by  = 'rowIndex') %>% 
+    dplyr::mutate(Indicator = stringr::str_replace(Indicator, "x1_", !!x1a))
+  
+  # data for kolmorogov smirnov test - list of data frames for
+  # each value of each (current & lagged) combined level / change factor
+  x8.1<-x8 %>% dplyr::select(Indicator, date, Value_fact, fwd_rtn_m) %>% 
+    tidyr::spread(Value_fact, fwd_rtn_m) %>% tidyr::nest(-Indicator)
+  
+  # perform ks test, map to each element of nested dataframe
+  x8.2 <- x8.1 %>% dplyr::mutate(
+    ks_fit = purrr::map(data, ~ stats::ks.test(.$In, .$Out)),
+    p_val  = purrr::map_dbl(ks_fit, "p.value"))
+  
+  # mean return data & difference in mean for histogram text
+  x9 <- x8 %>% dplyr::group_by(Value_fact, Indicator) %>% dplyr::summarise(Mean = mean(fwd_rtn_m))
+  x9.1 <- x9 %>% tidyr::spread(Value_fact, Mean) %>% dplyr::mutate(mean_diff = In - Out)
+  
+  
+  # HISTOGRAM PLOT
+  
+  x10 <- ggplot2::ggplot(data = x8, ggplot2::aes(x = fwd_rtn_m, colour = Value_fact, fill = Value_fact)) + 
+    ggplot2::geom_density(alpha = 0.3) + 
+    ggplot2::geom_text(
+      data = x9.1, size = 2.5, 
+      ggplot2::aes(x = -0.25, 
+      y = 12, 
+      label = paste0("Difference in\nmean ", 
+                     scales::percent(round(dplyr::if_else(is.na(mean_diff), 0, mean_diff), 4)), 
+                     sep =" "), 
+      colour = NULL, 
+      fill = NULL), 
+      hjust = 0
+      ) +
+    ggplot2::geom_text(
+      data = x8.2,  size = 2.5,  ggplot2::aes(x = -0.25, y = 8, 
+      label = paste0("KS pvalue ", 
+                      scales::percent(round(dplyr::if_else(is.na(p_val), 0, p_val), 4)), 
+                      sep =" "), 
+      colour = NULL, 
+      fill = NULL), 
+      hjust = 0
+      ) +
+    ggplot2::geom_vline(
+      data = x9, ggplot2::aes(xintercept = Mean, colour = Value_fact),
+      linetype = "dashed", size = 0.5) +
+    ggplot2::labs(title = "Subsequent month returns", 
+         subtitle       = paste("Conditioned on binary indicator as specified for each facet.  Current values: ", x2.1[1, 1], ", ", x2.1[2, 1], " and ", x2.1[3, 1], ".", sep = ""),
+         caption        = " The orange distribution represents subsequent monthly returns during\nperiods when the indicator is in the lag / level / direction specified\nby the facet title.  The blue distribution represent subsequent\nreturns during all other periods.", 
+         x              = "", 
+         y              = "") +
+    ggplot2::facet_wrap(~ Indicator, ncol = 6) +  
+    ggplot2::theme_grey() +
+    ggplot2::theme(
+      plot.title    = ggplot2::element_text(face = "bold", size = 14),
+      plot.subtitle = ggplot2::element_text(face = "italic", size = 10),
+      plot.caption  = ggplot2::element_text(face = "italic", size = 8),
+      axis.title.y  = ggplot2::element_text(face = "italic", size = 9),
+      axis.title.x  = ggplot2::element_text(face = "italic", size = 7),
+      legend.position = "none"
+    )
+  
+  
+  # PLOT OF S&P500 AND MARKET IN/OUT SHADING
+  
+  x11 <- ggplot2::ggplot(data= df1, ggplot2::aes(x = date, y = close, group = 1)) +
+    ggplot2::geom_line() +
+    ggplot2::scale_y_log10() +
+    ggplot2::geom_rect(
+      data        = df2, 
+      inherit.aes = FALSE,
+      ggplot2::aes(xmin = start, xmax = end, ymin = 0, ymax = Inf), 
+      fill        ='lightblue', alpha=0.5) +
+    ggplot2::theme_minimal() +
+    ggplot2::labs(
+      title    = "S&P500", 
+      subtitle = "log scale",
+      caption  = "", 
+      x        = "Year",
+      y        = "Close") +
+    ggplot2::geom_hline(yintercept = 0, color = "black") +
+    ggplot2::theme(
+      plot.title      = ggplot2::element_text(face = "bold", size = 14),
+      plot.subtitle   = ggplot2::element_text(face = "italic", size = 9),
+      plot.caption    = ggplot2::element_text(hjust = 0),
+      axis.title.y    = ggplot2::element_text(face = "italic", size = 9),
+      axis.title.x    = ggplot2::element_text(face = "italic", size = 9))
+  
+  
+  # PLOT OF SELECTED MARKET INDICATOR & IN/OUT SHADING
+  
+  x12<-ggplot2::ggplot(data = df1, ggplot2::aes(x = date, y = !!x1, group = 1)) +
+    ggplot2::geom_line() +
+    ggplot2::geom_rect(
+      data        = df2, 
+      inherit.aes = FALSE,
+      ggplot2::aes(xmin = start, xmax = end, ymin = -Inf, ymax = Inf), 
+      fill        = 'lightblue', 
+      alpha       = 0.5) +
+    ggplot2::geom_hline(yintercept = 0, color = "black") +  
+    #geom_hline(yintercept = quantile(!!x1, probs = 0.66), color = "black", linetype = "dotted") + 
+    #geom_hline(yintercept = quantile(!!x1, probs = 0.66), color = "black", linetype = "dotted") + 
+    ggplot2::theme_minimal() +
+    ggplot2::labs(
+      title            = "",
+      subtitle         = "",
+      #caption          = "Dashed lines represent upper and lower terciles", 
+      x                = "Year", 
+      y                = rlang::quo_name(x1)) + 
+    ggplot2::theme(
+      plot.title      = ggplot2::element_text(face  = "bold", size = 14),
+      plot.subtitle   = ggplot2::element_text(face  = "italic", size = 9),
+      plot.caption    = ggplot2::element_text(face = "italic", size = 8),
+      axis.title.y    = ggplot2::element_text(face  = "italic", size = 9),
+      axis.title.x    = ggplot2::element_text(face  = "italic", size = 9))
+  
+  # COMBINE PLOTS
+  return(list(cowplot::plot_grid(x11, x12, ncol = 1, align = 'v'), x10))   
+}

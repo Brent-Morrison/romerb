@@ -16,5 +16,18 @@ LazyData: true
 Roxygen: list(markdown = TRUE)
 RoxygenNote: 7.1.1
 Imports: 
+    stats,
     tibble,
-    stats
+    rlang,
+    dplyr,
+    tidyr,
+    ggplot2,
+    stringr,
+    scales,
+    tidyselect,
+    cowplot,
+    magrittr,
+    purrr
+Depends: 
+    caret
+
