@@ -10,14 +10,19 @@
 #'
 #' @param df2 A dataframe containing the time series to shade the S&P500 plot
 #' 
-#' @param col1 A column name in df1 representing time series to derive the multiple binary indicators
+#' @param date_idx The column of df1 which is the date index
 #' 
-#' @param col2 either, level - split time series into 3 levels, or both  - split time series into 3 levels and 6 month change
+#' @param cndtn_series A column name in df1 representing the conditioning time series to derive the multiple binary indicators
+#' 
+#' @param bin_method either, "level" - split time series into terciles only, or "both"  - split time series into terciles and a 6 month change indicator ("increase" or "decrease")
 #' 
 #' @export
-#' @return A tibble containing a date stamp and standardised unexpected volume.
+#' @return A ggplot object.
 #' 
-ts_segmentation <- function(df1, df2, col1, col2) {
+ts_segmentation <- function(df1, df2, date_idx, cndtn_series, bin_method) {
+  
+  # https://fishandwhistle.net/slides/rstudioconf2020/#1
+  
   # use old tidyr::nest
   nest <- tidyr::nest_legacy
   
@@ -26,12 +31,14 @@ ts_segmentation <- function(df1, df2, col1, col2) {
   Indicator <- rowname <- rowIndex	<- Value <- Value_fact <- data <-ks_fit <- Mean <- In <- 
   Out <- mean_diff <- p_val <- start <- end <- NULL
   
-  x1 <- rlang::enquo(col1)
+  di <- rlang::enquo(date_idx)
+  x1 <- rlang::enquo(cndtn_series)
   x1a<- paste0(rlang::quo_name(x1), " : ")
-  x1b<- rlang::enquo(col2)
+  x1b<- rlang::enquo(bin_method)
   x2 <- df1 %>% 
+    ### MUTATE HERE TO CREATE "fwd_rtn_m" AS OPPOSED TO REQUIRING THIS IN DF1 ###
     # select data required, including indicator under analysis
-    dplyr::select(date, fwd_rtn_m, !!x1) %>% 
+    dplyr::select(!!di, fwd_rtn_m, !!x1) %>% 
     tidyr::drop_na() %>% 
     dplyr::mutate(
       x1.lag6  = dplyr::lag(!!x1, 6),
@@ -43,13 +50,16 @@ ts_segmentation <- function(df1, df2, col1, col2) {
                           x1.qntlx == 2 ~ "_mid", 
                           x1.qntlx == 3 ~ "_high"),
            
-           # change in level indicator
-           x1.rtn6  = !!x1 - x1.lag6,
-           x1.rtn12 = !!x1 - x1.lag12,
-           
-           # binary change in level factor
-           x1.delta = dplyr::case_when(rlang::quo_name(x1b) == "level" ~ "", 
-                                       rlang::quo_name(x1b) == "both"  ~ if_else(!!x1 > dplyr::lag(!!x1, n = 6), "incr", "decr"))) %>%
+       # change in level indicator
+       x1.rtn6  = !!x1 - x1.lag6,
+       x1.rtn12 = !!x1 - x1.lag12,
+       
+       # binary change in level factor
+       x1.delta = dplyr::case_when(
+         rlang::quo_name(x1b) == "level" ~ "", 
+         rlang::quo_name(x1b) == "both"  ~ if_else(!!x1 > dplyr::lag(!!x1, n = 6), "incr", "decr")
+         )
+      ) %>%
     
     # factor combining tercile level and binary change in level factors 
     tidyr::unite(x1_lag00, c(x1.qntl, x1.delta),sep="_", remove = FALSE) %>%
@@ -83,7 +93,7 @@ ts_segmentation <- function(df1, df2, col1, col2) {
     dplyr::mutate(Value_fact = ifelse(Value == 1, "In", "Out"))
   
   # assign rownames to columns in order to join return data to dummy variable data
-  x7 <- x2 %>% dplyr::select(date, fwd_rtn_m) %>% tibble::rownames_to_column(var = 'rowIndex')
+  x7 <- x2 %>% dplyr::select(!!di, fwd_rtn_m) %>% tibble::rownames_to_column(var = 'rowIndex')
   
   # data for histogram plot - join return data to dummy variable data 
   x8 <- dplyr::full_join(x6, x7, by  = 'rowIndex') %>% 
@@ -91,7 +101,7 @@ ts_segmentation <- function(df1, df2, col1, col2) {
   
   # data for kolmorogov smirnov test - list of data frames for
   # each value of each (current & lagged) combined level / change factor
-  x8.1<-x8 %>% dplyr::select(Indicator, date, Value_fact, fwd_rtn_m) %>% 
+  x8.1<-x8 %>% dplyr::select(Indicator, !!di, Value_fact, fwd_rtn_m) %>% 
     tidyr::spread(Value_fact, fwd_rtn_m) %>% tidyr::nest(-Indicator)
   
   # perform ks test, map to each element of nested dataframe
@@ -144,13 +154,14 @@ ts_segmentation <- function(df1, df2, col1, col2) {
       plot.caption  = ggplot2::element_text(face = "italic", size = 8),
       axis.title.y  = ggplot2::element_text(face = "italic", size = 9),
       axis.title.x  = ggplot2::element_text(face = "italic", size = 7),
+      strip.text    = ggplot2::element_text(size = 7),
       legend.position = "none"
     )
   
   
-  # PLOT OF S&P500 AND MARKET IN/OUT SHADING
+  # PLOT OF IN/OUT SHADING
   
-  x11 <- ggplot2::ggplot(data= df1, ggplot2::aes(x = date, y = close, group = 1)) +
+  x11 <- ggplot2::ggplot(data = df1, ggplot2::aes(x = !!di, y = close, group = 1)) +
     ggplot2::geom_line() +
     ggplot2::scale_y_log10() +
     ggplot2::geom_rect(
@@ -174,9 +185,9 @@ ts_segmentation <- function(df1, df2, col1, col2) {
       axis.title.x    = ggplot2::element_text(face = "italic", size = 9))
   
   
-  # PLOT OF SELECTED MARKET INDICATOR & IN/OUT SHADING
+  # PLOT OF SELECTED SERIES & IN/OUT SHADING
   
-  x12<-ggplot2::ggplot(data = df1, ggplot2::aes(x = date, y = !!x1, group = 1)) +
+  x12<-ggplot2::ggplot(data = df1, ggplot2::aes(x = !!di, y = !!x1, group = 1)) +
     ggplot2::geom_line() +
     ggplot2::geom_rect(
       data        = df2, 
@@ -195,11 +206,11 @@ ts_segmentation <- function(df1, df2, col1, col2) {
       x                = "Year", 
       y                = rlang::quo_name(x1)) + 
     ggplot2::theme(
-      plot.title      = ggplot2::element_text(face  = "bold", size = 14),
-      plot.subtitle   = ggplot2::element_text(face  = "italic", size = 9),
+      plot.title      = ggplot2::element_text(face = "bold", size = 14),
+      plot.subtitle   = ggplot2::element_text(face = "italic", size = 9),
       plot.caption    = ggplot2::element_text(face = "italic", size = 8),
-      axis.title.y    = ggplot2::element_text(face  = "italic", size = 9),
-      axis.title.x    = ggplot2::element_text(face  = "italic", size = 9))
+      axis.title.y    = ggplot2::element_text(face = "italic", size = 9),
+      axis.title.x    = ggplot2::element_text(face = "italic", size = 9))
   
   # COMBINE PLOTS
   return(list(cowplot::plot_grid(x11, x12, ncol = 1, align = 'v'), x10))   

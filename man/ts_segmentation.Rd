@@ -4,7 +4,7 @@
 \alias{ts_segmentation}
 \title{Time series histogram and shading}
 \usage{
-ts_segmentation(df1, df2, col1, col2)
+ts_segmentation(df1, df2, date_idx, cndtn_series, bin_method)
 }
 \arguments{
 \item{df1}{A dataframe containing the following columns:
@@ -17,12 +17,14 @@ ts_segmentation(df1, df2, col1, col2)
 
 \item{df2}{A dataframe containing the time series to shade the S&P500 plot}
 
-\item{col1}{A column name in df1 representing time series to derive the multiple binary indicators}
+\item{date_idx}{The column of df1 which is the date index}
 
-\item{col2}{either, level - split time series into 3 levels, or both  - split time series into 3 levels and 6 month change}
+\item{cndtn_series}{A column name in df1 representing the conditioning time series to derive the multiple binary indicators}
+
+\item{bin_method}{either, "level" - split time series into terciles only, or "both"  - split time series into terciles and a 6 month change indicator ("increase" or "decrease")}
 }
 \value{
-A tibble containing a date stamp and standardised unexpected volume.
+A ggplot object.
 }
 \description{
 Make density plot of subsequent returns conditioned on multiple binary indicators derived from reference time series
