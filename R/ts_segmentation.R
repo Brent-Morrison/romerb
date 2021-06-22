@@ -123,7 +123,7 @@ ts_segmentation <- function(df1, df2, date_idx, cndtn_series, bin_method) {
       ggplot2::aes(x = -0.25, 
       y = 12, 
       label = paste0("Difference in\nmean ", 
-                     scales::percent(round(dplyr::if_else(is.na(mean_diff), 0, mean_diff), 4)), 
+                     scales::percent(round(dplyr::if_else(is.na(mean_diff), 0, mean_diff), 2)), 
                      sep =" "), 
       colour = NULL, 
       fill = NULL), 
@@ -132,7 +132,7 @@ ts_segmentation <- function(df1, df2, date_idx, cndtn_series, bin_method) {
     ggplot2::geom_text(
       data = x8.2,  size = 2.5,  ggplot2::aes(x = -0.25, y = 8, 
       label = paste0("KS pvalue ", 
-                      scales::percent(round(dplyr::if_else(is.na(p_val), 0, p_val), 4)), 
+                      scales::percent(round(dplyr::if_else(is.na(p_val), 0, p_val), 1)), 
                       sep =" "), 
       colour = NULL, 
       fill = NULL), 
@@ -141,11 +141,12 @@ ts_segmentation <- function(df1, df2, date_idx, cndtn_series, bin_method) {
     ggplot2::geom_vline(
       data = x9, ggplot2::aes(xintercept = Mean, colour = Value_fact),
       linetype = "dashed", size = 0.5) +
-    ggplot2::labs(title = "Subsequent month returns", 
-         subtitle       = paste("Conditioned on binary indicator as specified for each facet.  Current values: ", x2.1[1, 1], ", ", x2.1[2, 1], " and ", x2.1[3, 1], ".", sep = ""),
-         caption        = " The orange distribution represents subsequent monthly returns during\nperiods when the indicator is in the lag / level / direction specified\nby the facet title.  The blue distribution represent subsequent\nreturns during all other periods.", 
-         x              = "", 
-         y              = "") +
+    ggplot2::labs(
+      title    = "Subsequent month returns", 
+      subtitle = paste("Conditioned on binary indicator as specified for each facet.  Current values: ", x2.1[1, 1], ", ", x2.1[2, 1], " and ", x2.1[3, 1], ".", sep = ""),
+      caption  = " The orange distribution represents subsequent monthly returns during\nperiods when the indicator is in the lag / level / direction specified\nby the facet title.  The blue distribution represent subsequent\nreturns during all other periods.", 
+      x        = "", 
+      y        = "") +
     ggplot2::facet_wrap(~ Indicator, ncol = 6) +  
     ggplot2::theme_grey() +
     ggplot2::theme(
@@ -187,7 +188,7 @@ ts_segmentation <- function(df1, df2, date_idx, cndtn_series, bin_method) {
   
   # PLOT OF SELECTED SERIES & IN/OUT SHADING
   
-  x12<-ggplot2::ggplot(data = df1, ggplot2::aes(x = !!di, y = !!x1, group = 1)) +
+  x12 <- ggplot2::ggplot(data = df1, ggplot2::aes(x = !!di, y = !!x1, group = 1)) +
     ggplot2::geom_line() +
     ggplot2::geom_rect(
       data        = df2, 
