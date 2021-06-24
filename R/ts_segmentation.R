@@ -1,25 +1,27 @@
 #' Time series histogram and shading
 #' 
-#' Make density plot of subsequent returns conditioned on multiple binary indicators derived from reference time series 
+#' Make density plot of subsequent returns conditioned on multiple binary indicators derived from a reference time series 
 #' 
 #' @param df1 A dataframe containing the following columns:
 #' - date
-#' - market index values (labelled "close")
+#' - a times series for assessment (to be referenced by the argument "invest_series")
 #' - monthly forward market returns (labelled "fwd_rtn_m")
-#' - an indicator time series to be plotted and categorised into bins representing specific level and change values
+#' - an indicator time series (to be referenced by the argument "cndtn_series") for plotting and categorisation into bins representing specific level and change values
 #'
 #' @param df2 A dataframe containing the time series to shade the S&P500 plot
 #' 
-#' @param date_idx The column of df1 which is the date index
+#' @param date_idx The column in df1 representing the date index
 #' 
-#' @param cndtn_series A column name in df1 representing the conditioning time series to derive the multiple binary indicators
+#' @param invest_series A column in df1 representing the time series for which returns are to be assessed
+#' 
+#' @param cndtn_series A column in df1 representing the conditioning time series to derive the multiple binary indicators
 #' 
 #' @param bin_method either, "level" - split time series into terciles only, or "both"  - split time series into terciles and a 6 month change indicator ("increase" or "decrease")
 #' 
 #' @export
 #' @return A ggplot object.
 #' 
-ts_segmentation <- function(df1, df2, date_idx, cndtn_series, bin_method) {
+ts_segmentation <- function(df1, df2, date_idx, invest_series, cndtn_series, bin_method) {
   
   # https://fishandwhistle.net/slides/rstudioconf2020/#1
   
@@ -32,13 +34,16 @@ ts_segmentation <- function(df1, df2, date_idx, cndtn_series, bin_method) {
   Out <- mean_diff <- p_val <- start <- end <- NULL
   
   di <- rlang::enquo(date_idx)
+  is <- rlang::enquo(invest_series)
   x1 <- rlang::enquo(cndtn_series)
   x1a<- paste0(rlang::quo_name(x1), " : ")
   x1b<- rlang::enquo(bin_method)
   x2 <- df1 %>% 
     ### MUTATE HERE TO CREATE "fwd_rtn_m" AS OPPOSED TO REQUIRING THIS IN DF1 ###
     # select data required, including indicator under analysis
-    dplyr::select(!!di, fwd_rtn_m, !!x1) %>% 
+    #dplyr::select(!!di, fwd_rtn_m, !!x1) %>% 
+    dplyr::select(!!di, !!is, !!x1) %>% 
+    dplyr::mutate(fwd_rtn_m = dplyr::lead(log(!!is)) - log(!!is)) %>% 
     tidyr::drop_na() %>% 
     dplyr::mutate(
       x1.lag6  = dplyr::lag(!!x1, 6),
@@ -162,7 +167,7 @@ ts_segmentation <- function(df1, df2, date_idx, cndtn_series, bin_method) {
   
   # PLOT OF IN/OUT SHADING
   
-  x11 <- ggplot2::ggplot(data = df1, ggplot2::aes(x = !!di, y = close, group = 1)) +
+  x11 <- ggplot2::ggplot(data = df1, ggplot2::aes(x = !!di, y = !!is, group = 1)) +
     ggplot2::geom_line() +
     ggplot2::scale_y_log10() +
     ggplot2::geom_rect(

@@ -4,22 +4,24 @@
 \alias{ts_segmentation}
 \title{Time series histogram and shading}
 \usage{
-ts_segmentation(df1, df2, date_idx, cndtn_series, bin_method)
+ts_segmentation(df1, df2, date_idx, invest_series, cndtn_series, bin_method)
 }
 \arguments{
 \item{df1}{A dataframe containing the following columns:
 \itemize{
 \item date
-\item market index values (labelled "close")
+\item a times series for assessment (to be referenced by the argument "invest_series")
 \item monthly forward market returns (labelled "fwd_rtn_m")
-\item an indicator time series to be plotted and categorised into bins representing specific level and change values
+\item an indicator time series (to be referenced by the argument "cndtn_series") for plotting and categorisation into bins representing specific level and change values
 }}
 
 \item{df2}{A dataframe containing the time series to shade the S&P500 plot}
 
-\item{date_idx}{The column of df1 which is the date index}
+\item{date_idx}{The column in df1 representing the date index}
 
-\item{cndtn_series}{A column name in df1 representing the conditioning time series to derive the multiple binary indicators}
+\item{invest_series}{A column in df1 representing the time series for which returns are to be assessed}
+
+\item{cndtn_series}{A column in df1 representing the conditioning time series to derive the multiple binary indicators}
 
 \item{bin_method}{either, "level" - split time series into terciles only, or "both"  - split time series into terciles and a 6 month change indicator ("increase" or "decrease")}
 }
@@ -27,5 +29,5 @@ ts_segmentation(df1, df2, date_idx, cndtn_series, bin_method)
 A ggplot object.
 }
 \description{
-Make density plot of subsequent returns conditioned on multiple binary indicators derived from reference time series
+Make density plot of subsequent returns conditioned on multiple binary indicators derived from a reference time series
 }
