@@ -27,7 +27,8 @@ Imports:
     tidyselect,
     cowplot,
     magrittr,
-    purrr
+    purrr,
+    slider
 Depends: 
     caret
 

@@ -7,8 +7,6 @@
 #' - a times series for assessment (to be referenced by the argument "invest_series")
 #' - monthly forward market returns (labelled "fwd_rtn_m")
 #' - an indicator time series (to be referenced by the argument "cndtn_series") for plotting and categorisation into bins representing specific level and change values
-#'
-#' @param df2 A dataframe containing the time series to shade the S&P500 plot
 #' 
 #' @param date_idx The column in df1 representing the date index
 #' 
@@ -18,10 +16,16 @@
 #' 
 #' @param bin_method either, "level" - split time series into terciles only, or "both"  - split time series into terciles and a 6 month change indicator ("increase" or "decrease")
 #' 
+#' @param lb The look back period for draw-down assessment
+#' 
+#' @param pc The percent draw-down for binary market in/out indicator cutoff
+#' 
+#' @param fr The minimum forward return for binary market in/out indicator cutoff
+#' 
 #' @export
 #' @return A ggplot object.
 #' 
-ts_segmentation <- function(df1, df2, date_idx, invest_series, cndtn_series, bin_method) {
+ts_segmentation <- function(df1, date_idx, invest_series, cndtn_series, bin_method, lb = 6, pc = 0.2, fr = -0.05) {
   
   # https://fishandwhistle.net/slides/rstudioconf2020/#1
   
@@ -31,7 +35,8 @@ ts_segmentation <- function(df1, df2, date_idx, invest_series, cndtn_series, bin
   # Bind variables locally - https://nathaneastwood.github.io/2019/08/18/no-visible-binding-for-global-variable/
   . <- fwd_rtn_m <- x1.lag6 <- x1.lag12 <- x1_lag00 <- x1.qntl	<- x1.delta <- x1_lag06	<- x1_lag12 <- 
   Indicator <- rowname <- rowIndex	<- Value <- Value_fact <- data <-ks_fit <- Mean <- In <- 
-  Out <- mean_diff <- p_val <- start <- end <- NULL
+  Out <- mean_diff <- p_val <- start <- end <- min_for_dd <- rtn_for_ind <- drawdown <- flag <-
+  y1 <- diff_flag <- NULL
   
   di <- rlang::enquo(date_idx)
   is <- rlang::enquo(invest_series)
@@ -43,7 +48,15 @@ ts_segmentation <- function(df1, df2, date_idx, invest_series, cndtn_series, bin
     # select data required, including indicator under analysis
     #dplyr::select(!!di, fwd_rtn_m, !!x1) %>% 
     dplyr::select(!!di, !!is, !!x1) %>% 
-    dplyr::mutate(fwd_rtn_m = dplyr::lead(log(!!is)) - log(!!is)) %>% 
+    dplyr::mutate(
+      fwd_rtn_m   = dplyr::lead(log(!!is)) - log(!!is),
+      rtn_for_ind = log(!!is) - dplyr::lag(log(!!is), lb),
+      min_for_dd  = slider::slide_dbl(.x = !!is, .f =  min, .before = lb - 1),
+      drawdown    = -dplyr::lag(log(!!is), lb) + log(min_for_dd),
+      flag        = ifelse(rtn_for_ind < fr | drawdown < -pc , 1, 0), 
+      y1          = dplyr::lead(flag, lb),
+      diff_flag   = c(NA, diff(y1))
+      ) %>% 
     tidyr::drop_na() %>% 
     dplyr::mutate(
       x1.lag6  = dplyr::lag(!!x1, 6),
@@ -67,7 +80,7 @@ ts_segmentation <- function(df1, df2, date_idx, invest_series, cndtn_series, bin
       ) %>%
     
     # factor combining tercile level and binary change in level factors 
-    tidyr::unite(x1_lag00, c(x1.qntl, x1.delta),sep="_", remove = FALSE) %>%
+    tidyr::unite(x1_lag00, c(x1.qntl, x1.delta),sep = "_", remove = FALSE) %>%
     
     # lagged combined factor and filter out NA's
     dplyr::mutate(
@@ -118,6 +131,10 @@ ts_segmentation <- function(df1, df2, date_idx, invest_series, cndtn_series, bin
   x9 <- x8 %>% dplyr::group_by(Value_fact, Indicator) %>% dplyr::summarise(Mean = mean(fwd_rtn_m))
   x9.1 <- x9 %>% tidyr::spread(Value_fact, Mean) %>% dplyr::mutate(mean_diff = In - Out)
   
+  strt <- x2 %>% dplyr::filter(diff_flag == 1) %>% dplyr::select(!!di) %>% dplyr::rename(start = !!di)
+  ends <- x2 %>% dplyr::filter(diff_flag == -1) %>% dplyr::select(!!di) %>% dplyr::rename(end = !!di)
+  len <- min(dplyr::count(strt), dplyr::count(ends))
+  shade <- data.frame(utils::head(strt, len), utils::head(ends, len))
   
   # HISTOGRAM PLOT
   
@@ -171,13 +188,13 @@ ts_segmentation <- function(df1, df2, date_idx, invest_series, cndtn_series, bin
     ggplot2::geom_line() +
     ggplot2::scale_y_log10() +
     ggplot2::geom_rect(
-      data        = df2, 
+      data        = shade, 
       inherit.aes = FALSE,
       ggplot2::aes(xmin = start, xmax = end, ymin = 0, ymax = Inf), 
       fill        ='lightblue', alpha=0.5) +
     ggplot2::theme_minimal() +
     ggplot2::labs(
-      title    = "S&P500", 
+      title    = invest_series, 
       subtitle = "log scale",
       caption  = "", 
       x        = "Year",
@@ -196,7 +213,7 @@ ts_segmentation <- function(df1, df2, date_idx, invest_series, cndtn_series, bin
   x12 <- ggplot2::ggplot(data = df1, ggplot2::aes(x = !!di, y = !!x1, group = 1)) +
     ggplot2::geom_line() +
     ggplot2::geom_rect(
-      data        = df2, 
+      data        = shade, 
       inherit.aes = FALSE,
       ggplot2::aes(xmin = start, xmax = end, ymin = -Inf, ymax = Inf), 
       fill        = 'lightblue', 
