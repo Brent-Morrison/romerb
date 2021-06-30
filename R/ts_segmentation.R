@@ -75,7 +75,7 @@ ts_segmentation <- function(df1, date_idx, invest_series, cndtn_series, bin_meth
        # binary change in level factor
        x1.delta = dplyr::case_when(
          rlang::quo_name(x1b) == "level" ~ "", 
-         rlang::quo_name(x1b) == "both"  ~ if_else(!!x1 > dplyr::lag(!!x1, n = 6), "incr", "decr")
+         rlang::quo_name(x1b) == "both"  ~ dplyr::if_else(!!x1 > dplyr::lag(!!x1, n = 6), "incr", "decr")
          )
       ) %>%
     
@@ -194,7 +194,7 @@ ts_segmentation <- function(df1, date_idx, invest_series, cndtn_series, bin_meth
       fill        ='lightblue', alpha=0.5) +
     ggplot2::theme_minimal() +
     ggplot2::labs(
-      title    = invest_series, 
+      title    = "!!is", 
       subtitle = "log scale",
       caption  = "", 
       x        = "Year",
