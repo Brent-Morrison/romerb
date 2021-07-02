@@ -2,17 +2,16 @@
 #' 
 #' Make density plot of subsequent returns conditioned on multiple binary indicators derived from a reference time series 
 #' 
-#' @param df1 A dataframe containing the following columns:
+#' @param df A dataframe containing the following columns:
 #' - date
 #' - a times series for assessment (to be referenced by the argument "invest_series")
-#' - monthly forward market returns (labelled "fwd_rtn_m")
 #' - an indicator time series (to be referenced by the argument "cndtn_series") for plotting and categorisation into bins representing specific level and change values
 #' 
-#' @param date_idx The column in df1 representing the date index
+#' @param date_idx The column in df representing the date index
 #' 
-#' @param invest_series A column in df1 representing the time series for which returns are to be assessed
+#' @param invest_series A column in df representing the time series for which returns are to be assessed
 #' 
-#' @param cndtn_series A column in df1 representing the conditioning time series to derive the multiple binary indicators
+#' @param cndtn_series A column in df representing the conditioning time series to derive the multiple binary indicators
 #' 
 #' @param bin_method either, "level" - split time series into terciles only, or "both"  - split time series into terciles and a 6 month change indicator ("increase" or "decrease")
 #' 
@@ -25,8 +24,9 @@
 #' @export
 #' @return A ggplot object.
 #' 
-ts_segmentation <- function(df1, date_idx, invest_series, cndtn_series, bin_method, lb = 6, pc = 0.2, fr = -0.05) {
+ts_segmentation <- function(df, date_idx, invest_series, cndtn_series, bin_method, lb = 6, pc = 0.2, fr = -0.05) {
   
+  # Programming with ggplot2
   # https://fishandwhistle.net/slides/rstudioconf2020/#1
   
   # use old tidyr::nest
@@ -43,10 +43,7 @@ ts_segmentation <- function(df1, date_idx, invest_series, cndtn_series, bin_meth
   x1 <- rlang::enquo(cndtn_series)
   x1a<- paste0(rlang::quo_name(x1), " : ")
   x1b<- rlang::enquo(bin_method)
-  x2 <- df1 %>% 
-    ### MUTATE HERE TO CREATE "fwd_rtn_m" AS OPPOSED TO REQUIRING THIS IN DF1 ###
-    # select data required, including indicator under analysis
-    #dplyr::select(!!di, fwd_rtn_m, !!x1) %>% 
+  x2 <- df %>% 
     dplyr::select(!!di, !!is, !!x1) %>% 
     dplyr::mutate(
       fwd_rtn_m   = dplyr::lead(log(!!is)) - log(!!is),
@@ -184,7 +181,7 @@ ts_segmentation <- function(df1, date_idx, invest_series, cndtn_series, bin_meth
   
   # PLOT OF IN/OUT SHADING
   
-  x11 <- ggplot2::ggplot(data = df1, ggplot2::aes(x = !!di, y = !!is, group = 1)) +
+  x11 <- ggplot2::ggplot(data = df, ggplot2::aes(x = !!di, y = !!is, group = 1)) +
     ggplot2::geom_line() +
     ggplot2::scale_y_log10() +
     ggplot2::geom_rect(
@@ -194,11 +191,12 @@ ts_segmentation <- function(df1, date_idx, invest_series, cndtn_series, bin_meth
       fill        ='lightblue', alpha=0.5) +
     ggplot2::theme_minimal() +
     ggplot2::labs(
-      title    = "!!is", 
+      title    = paste(invest_series, "conditioned on", cndtn_series, sep = " "),
       subtitle = "log scale",
       caption  = "", 
-      x        = "Year",
-      y        = "Close") +
+      #x        = "Year",
+      #y        = "Close"
+      ) +
     ggplot2::geom_hline(yintercept = 0, color = "black") +
     ggplot2::theme(
       plot.title      = ggplot2::element_text(face = "bold", size = 14),
@@ -210,7 +208,7 @@ ts_segmentation <- function(df1, date_idx, invest_series, cndtn_series, bin_meth
   
   # PLOT OF SELECTED SERIES & IN/OUT SHADING
   
-  x12 <- ggplot2::ggplot(data = df1, ggplot2::aes(x = !!di, y = !!x1, group = 1)) +
+  x12 <- ggplot2::ggplot(data = df, ggplot2::aes(x = !!di, y = !!x1, group = 1)) +
     ggplot2::geom_line() +
     ggplot2::geom_rect(
       data        = shade, 

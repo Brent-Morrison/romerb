@@ -5,7 +5,7 @@
 \title{Time series histogram and shading}
 \usage{
 ts_segmentation(
-  df1,
+  df,
   date_idx,
   invest_series,
   cndtn_series,
@@ -16,19 +16,18 @@ ts_segmentation(
 )
 }
 \arguments{
-\item{df1}{A dataframe containing the following columns:
+\item{df}{A dataframe containing the following columns:
 \itemize{
 \item date
 \item a times series for assessment (to be referenced by the argument "invest_series")
-\item monthly forward market returns (labelled "fwd_rtn_m")
 \item an indicator time series (to be referenced by the argument "cndtn_series") for plotting and categorisation into bins representing specific level and change values
 }}
 
-\item{date_idx}{The column in df1 representing the date index}
+\item{date_idx}{The column in df representing the date index}
 
-\item{invest_series}{A column in df1 representing the time series for which returns are to be assessed}
+\item{invest_series}{A column in df representing the time series for which returns are to be assessed}
 
-\item{cndtn_series}{A column in df1 representing the conditioning time series to derive the multiple binary indicators}
+\item{cndtn_series}{A column in df representing the conditioning time series to derive the multiple binary indicators}
 
 \item{bin_method}{either, "level" - split time series into terciles only, or "both"  - split time series into terciles and a 6 month change indicator ("increase" or "decrease")}
 
