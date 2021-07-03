@@ -36,12 +36,13 @@ ts_segmentation <- function(df, date_idx, invest_series, cndtn_series, bin_metho
   . <- fwd_rtn_m <- x1.lag6 <- x1.lag12 <- x1_lag00 <- x1.qntl	<- x1.delta <- x1_lag06	<- x1_lag12 <- 
   Indicator <- rowname <- rowIndex	<- Value <- Value_fact <- data <-ks_fit <- Mean <- In <- 
   Out <- mean_diff <- p_val <- start <- end <- min_for_dd <- rtn_for_ind <- drawdown <- flag <-
-  y1 <- diff_flag <- NULL
+  y1 <- diff_flag <- colnum <- NULL
   
   di <- rlang::enquo(date_idx)
   is <- rlang::enquo(invest_series)
   x1 <- rlang::enquo(cndtn_series)
-  x1a<- paste0(rlang::quo_name(x1), " : ")
+  #x1a<- paste0(rlang::quo_name(x1), " : ")
+  x1a<- paste0(rlang::as_name(x1), " : ")
   x1b<- rlang::enquo(bin_method)
   x2 <- df %>% 
     dplyr::select(!!di, !!is, !!x1) %>% 
@@ -71,8 +72,8 @@ ts_segmentation <- function(df, date_idx, invest_series, cndtn_series, bin_metho
        
        # binary change in level factor
        x1.delta = dplyr::case_when(
-         rlang::quo_name(x1b) == "level" ~ "", 
-         rlang::quo_name(x1b) == "both"  ~ dplyr::if_else(!!x1 > dplyr::lag(!!x1, n = 6), "incr", "decr")
+         rlang::as_name(x1b) == "level" ~ "", 
+         rlang::as_name(x1b) == "both"  ~ dplyr::if_else(!!x1 > dplyr::lag(!!x1, n = 6), "incr", "decr")
          )
       ) %>%
     
@@ -112,7 +113,7 @@ ts_segmentation <- function(df, date_idx, invest_series, cndtn_series, bin_metho
   
   # data for histogram plot - join return data to dummy variable data 
   x8 <- dplyr::full_join(x6, x7, by  = 'rowIndex') %>% 
-    dplyr::mutate(Indicator = stringr::str_replace(Indicator, "x1_", !!x1a))
+    dplyr::mutate(Indicator = stringr::str_replace(Indicator, "x1_", ""))#!!x1a)) ADD CASE WHEN HERE FOR TRAILING UNDERSCORE
   
   # data for kolmorogov smirnov test - list of data frames for
   # each value of each (current & lagged) combined level / change factor
@@ -135,6 +136,8 @@ ts_segmentation <- function(df, date_idx, invest_series, cndtn_series, bin_metho
   
   # HISTOGRAM PLOT
   
+  colnum <- ifelse(rlang::as_name(x1b) == "both", 6, 3)
+  
   x10 <- ggplot2::ggplot(data = x8, ggplot2::aes(x = fwd_rtn_m, colour = Value_fact, fill = Value_fact)) + 
     ggplot2::geom_density(alpha = 0.3) + 
     ggplot2::geom_text(
@@ -151,7 +154,7 @@ ts_segmentation <- function(df, date_idx, invest_series, cndtn_series, bin_metho
     ggplot2::geom_text(
       data = x8.2,  size = 2.5,  ggplot2::aes(x = -0.25, y = 8, 
       label = paste0("KS pvalue ", 
-                      scales::percent(round(dplyr::if_else(is.na(p_val), 0, p_val), 1)), 
+                      scales::percent(round(dplyr::if_else(is.na(p_val), 0, p_val), 2)), 
                       sep =" "), 
       colour = NULL, 
       fill = NULL), 
@@ -161,12 +164,13 @@ ts_segmentation <- function(df, date_idx, invest_series, cndtn_series, bin_metho
       data = x9, ggplot2::aes(xintercept = Mean, colour = Value_fact),
       linetype = "dashed", size = 0.5) +
     ggplot2::labs(
-      title    = "Subsequent month returns", 
-      subtitle = paste("Conditioned on binary indicator as specified for each facet.  Current values: ", x2.1[1, 1], ", ", x2.1[2, 1], " and ", x2.1[3, 1], ".", sep = ""),
+      title    = paste("rlang::as_name(is)", "subsequent month returns", sep = " "), 
+      subtitle = paste("Conditioned on level of ", "rlang::as_name(x1)",  "at various lags.  Current values: ", x2.1[1, 1], ", ", x2.1[2, 1], " and ", x2.1[3, 1], ".", sep = ""),
       caption  = " The orange distribution represents subsequent monthly returns during\nperiods when the indicator is in the lag / level / direction specified\nby the facet title.  The blue distribution represent subsequent\nreturns during all other periods.", 
       x        = "", 
-      y        = "") +
-    ggplot2::facet_wrap(~ Indicator, ncol = 6) +  
+      y        = ""
+      ) +
+    ggplot2::facet_wrap(~ Indicator, ncol = colnum) +  
     ggplot2::theme_grey() +
     ggplot2::theme(
       plot.title    = ggplot2::element_text(face = "bold", size = 14),
@@ -174,7 +178,7 @@ ts_segmentation <- function(df, date_idx, invest_series, cndtn_series, bin_metho
       plot.caption  = ggplot2::element_text(face = "italic", size = 8),
       axis.title.y  = ggplot2::element_text(face = "italic", size = 9),
       axis.title.x  = ggplot2::element_text(face = "italic", size = 7),
-      strip.text    = ggplot2::element_text(size = 7),
+      strip.text    = ggplot2::element_text(size = 8),
       legend.position = "none"
     )
   
@@ -191,10 +195,10 @@ ts_segmentation <- function(df, date_idx, invest_series, cndtn_series, bin_metho
       fill        ='lightblue', alpha=0.5) +
     ggplot2::theme_minimal() +
     ggplot2::labs(
-      title    = paste(invest_series, "conditioned on", cndtn_series, sep = " "),
+      title    = paste("rlang::as_name(is)", "conditioned on", "rlang::as_name(x1)", sep = " "),
       subtitle = "log scale",
-      caption  = "", 
-      #x        = "Year",
+      caption  = "",
+      x        = ""
       #y        = "Close"
       ) +
     ggplot2::geom_hline(yintercept = 0, color = "black") +
@@ -224,8 +228,9 @@ ts_segmentation <- function(df, date_idx, invest_series, cndtn_series, bin_metho
       title            = "",
       subtitle         = "",
       #caption          = "Dashed lines represent upper and lower terciles", 
-      x                = "Year", 
-      y                = rlang::quo_name(x1)) + 
+      x                = ""
+      #y                = rlang::quo_name(x1)
+      ) + 
     ggplot2::theme(
       plot.title      = ggplot2::element_text(face = "bold", size = 14),
       plot.subtitle   = ggplot2::element_text(face = "italic", size = 9),
