@@ -164,8 +164,8 @@ ts_segmentation <- function(df, date_idx, invest_series, cndtn_series, bin_metho
       data = x9, ggplot2::aes(xintercept = Mean, colour = Value_fact),
       linetype = "dashed", size = 0.5) +
     ggplot2::labs(
-      title    = paste("rlang::as_name(is)", "subsequent month returns", sep = " "), 
-      subtitle = paste("Conditioned on level of ", "rlang::as_name(x1)",  "at various lags.  Current values: ", x2.1[1, 1], ", ", x2.1[2, 1], " and ", x2.1[3, 1], ".", sep = ""),
+      title    = paste(rlang::as_name(is), "subsequent month returns", sep = " "), 
+      subtitle = paste("Conditioned on level of ", rlang::as_name(x1),  " at various lags.  Current values: ", x2.1[1, 1], ", ", x2.1[2, 1], " and ", x2.1[3, 1], ".", sep = ""),
       caption  = " The orange distribution represents subsequent monthly returns during\nperiods when the indicator is in the lag / level / direction specified\nby the facet title.  The blue distribution represent subsequent\nreturns during all other periods.", 
       x        = "", 
       y        = ""
@@ -195,7 +195,7 @@ ts_segmentation <- function(df, date_idx, invest_series, cndtn_series, bin_metho
       fill        ='lightblue', alpha=0.5) +
     ggplot2::theme_minimal() +
     ggplot2::labs(
-      title    = paste("rlang::as_name(is)", "conditioned on", "rlang::as_name(x1)", sep = " "),
+      title    = paste(rlang::as_name(is), "conditioned on", rlang::as_name(x1), sep = " "),
       subtitle = "log scale",
       caption  = "",
       x        = ""
