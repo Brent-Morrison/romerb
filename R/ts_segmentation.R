@@ -11,7 +11,13 @@
 #' 
 #' @param invest_series A column in df representing the time series for which returns are to be assessed
 #' 
+#' @param invest_name A string representing the name of the time series for which returns are to be assessed.  
+#' If populated, this this will display in the plot title as opposed to the column name. 
+#' 
 #' @param cndtn_series A column in df representing the conditioning time series to derive the multiple binary indicators
+#' 
+#' @param cndtn_name A string representing the name of the conditioning time series to derive the multiple binary indicators.  
+#' If populated, this this will display in the plot title as opposed to the column name.
 #' 
 #' @param bin_method either, "level" - split time series into terciles only, or "both"  - split time series into terciles and a 6 month change indicator ("increase" or "decrease")
 #' 
@@ -24,7 +30,18 @@
 #' @export
 #' @return A ggplot object.
 #' 
-ts_segmentation <- function(df, date_idx, invest_series, cndtn_series, bin_method, lb = 6, pc = 0.2, fr = -0.05) {
+ts_segmentation <- function(
+  df, 
+  date_idx, 
+  invest_series, 
+  invest_name = NULL,
+  cndtn_series, 
+  cndtn_name = NULL,
+  bin_method, 
+  lb = 6, 
+  pc = 0.2, 
+  fr = -0.05
+  ) {
   
   # Programming with ggplot2
   # https://fishandwhistle.net/slides/rstudioconf2020/#1
@@ -164,8 +181,8 @@ ts_segmentation <- function(df, date_idx, invest_series, cndtn_series, bin_metho
       data = x9, ggplot2::aes(xintercept = Mean, colour = Value_fact),
       linetype = "dashed", size = 0.5) +
     ggplot2::labs(
-      title    = paste(rlang::as_name(is), "subsequent month returns", sep = " "), 
-      subtitle = paste("Conditioned on level of ", rlang::as_name(x1),  " at various lags.  Current values: ", x2.1[1, 1], ", ", x2.1[2, 1], " and ", x2.1[3, 1], ".", sep = ""),
+      title    = paste(ifelse(is.null(invest_name), rlang::as_name(is), invest_name), "subsequent month returns", sep = " "), 
+      subtitle = paste("Conditioned on level of ", ifelse(is.null(cndtn_name), rlang::as_name(x1), cndtn_name),  " at various lags\nCurrent values: ", x2.1[1, 1], ", ", x2.1[2, 1], " and ", x2.1[3, 1], sep = ""),
       caption  = " The orange distribution represents subsequent monthly returns during\nperiods when the indicator is in the lag / level / direction specified\nby the facet title.  The blue distribution represent subsequent\nreturns during all other periods.", 
       x        = "", 
       y        = ""
@@ -195,11 +212,12 @@ ts_segmentation <- function(df, date_idx, invest_series, cndtn_series, bin_metho
       fill        ='lightblue', alpha=0.5) +
     ggplot2::theme_minimal() +
     ggplot2::labs(
-      title    = paste(rlang::as_name(is), "conditioned on", rlang::as_name(x1), sep = " "),
+      #title    = paste(rlang::as_name(is), "conditioned on", rlang::as_name(x1), sep = " "),
+      title    = paste(ifelse(is.null(invest_name), rlang::as_name(is), invest_name), "conditioned on", ifelse(is.null(cndtn_name), rlang::as_name(x1), cndtn_name), sep = " "),
       subtitle = "log scale",
       caption  = "",
-      x        = ""
-      #y        = "Close"
+      x        = "",
+      y        = ifelse(is.null(invest_name), rlang::as_name(is), invest_name)
       ) +
     ggplot2::geom_hline(yintercept = 0, color = "black") +
     ggplot2::theme(
@@ -228,8 +246,8 @@ ts_segmentation <- function(df, date_idx, invest_series, cndtn_series, bin_metho
       title            = "",
       subtitle         = "",
       #caption          = "Dashed lines represent upper and lower terciles", 
-      x                = ""
-      #y                = rlang::quo_name(x1)
+      x                = "",
+      y                = ifelse(is.null(cndtn_name), rlang::as_name(x1), cndtn_name)
       ) + 
     ggplot2::theme(
       plot.title      = ggplot2::element_text(face = "bold", size = 14),

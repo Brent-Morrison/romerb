@@ -8,7 +8,9 @@ ts_segmentation(
   df,
   date_idx,
   invest_series,
+  invest_name = NULL,
   cndtn_series,
+  cndtn_name = NULL,
   bin_method,
   lb = 6,
   pc = 0.2,
@@ -27,7 +29,13 @@ ts_segmentation(
 
 \item{invest_series}{A column in df representing the time series for which returns are to be assessed}
 
+\item{invest_name}{A string representing the name of the time series for which returns are to be assessed.
+If populated, this this will display in the plot title as opposed to the column name.}
+
 \item{cndtn_series}{A column in df representing the conditioning time series to derive the multiple binary indicators}
+
+\item{cndtn_name}{A string representing the name of the conditioning time series to derive the multiple binary indicators.
+If populated, this this will display in the plot title as opposed to the column name.}
 
 \item{bin_method}{either, "level" - split time series into terciles only, or "both"  - split time series into terciles and a 6 month change indicator ("increase" or "decrease")}
 
