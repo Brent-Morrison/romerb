@@ -188,7 +188,7 @@ ts_segmentation <- function(
       y        = ""
       ) +
     ggplot2::facet_wrap(~ Indicator, ncol = colnum) +  
-    ggplot2::theme_grey() +
+    ggplot2::theme_minimal() +
     ggplot2::theme(
       plot.title    = ggplot2::element_text(face = "bold", size = 14),
       plot.subtitle = ggplot2::element_text(face = "italic", size = 10),
