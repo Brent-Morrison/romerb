@@ -7,12 +7,12 @@
 \format{
 A data frame with 8702 rows and 10 variables:
 \describe{
-\item{date_stamp}{month end dates}
-\item{sector}{the industry sector to whcih the stock belongs}
+\item{date_stamp}{date_stamp}
+\item{sector}{the industry sector to which the stock belongs}
 \item{ticker}{the ticker symbol identifying the company}
 \item{log_pb}{the log of the book to price ratio}
 \item{mkt_cap}{the stocks market capitalisation}
-\item{reo}{the stocks return on equity for the trailing 4 quarters}
+\item{roe}{the stocks return on equity for the trailing 4 quarters}
 \item{total_assets}{the stocks total assets at the most recent available reporting date}
 \item{total_equity}{the stocks total equity at the most recent available reporting date}
 \item{total_equity_cln}{should the stocks have negative total equity, 10\% of total assets}
