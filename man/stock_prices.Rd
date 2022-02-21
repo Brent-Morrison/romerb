@@ -35,7 +35,7 @@ A data frame with 30705 rows and 24 variables:
 }
 }
 \source{
-\url{Alpha Vantage forraw data and "return_attributes.R" for further calculations}
+\url{Alpha Vantage for raw data and "return_attributes.R" for further calculations}
 }
 \usage{
 stock_prices
