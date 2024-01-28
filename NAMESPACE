@@ -3,4 +3,5 @@
 export("%>%")
 export(suv)
 export(ts_segmentation)
+export(xsect_scale)
 importFrom(magrittr,"%>%")
